@@ -1,10 +1,274 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Welcome to My Site</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yuguang Song - Academic Profile</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --link-color: #2980b9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem 0;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .position {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .contact-info {
+            margin: 1rem 0;
+        }
+
+        .social-links {
+            margin: 1rem 0;
+        }
+
+        .social-links a {
+            color: var(--link-color);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .social-links a:hover {
+            text-decoration: underline;
+        }
+
+        .research-topics {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .topic {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .talks-list, .news-list {
+            list-style: none;
+        }
+
+        .talks-list li, .news-list li {
+            margin-bottom: 0.5rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        .talks-list li::before, .news-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--secondary-color);
+        }
+
+        .publication {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .publication-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .publication-authors {
+            font-style: italic;
+            margin-bottom: 0.5rem;
+        }
+
+        .publication-venue {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .publication-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .publication-links a {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .publication-links a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .research-topics {
+                flex-direction: column;
+            }
+
+            .topic {
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello, World!</h1>
-    <p>This is my GitHub Pages site.</p>
+    <header>
+        <h1>Yuguang Song</h1>
+        <div class="position">Incoming Assistant Professor</div>
+        <div class="position">University of Toronto and Vector Institute</div>
+        <div class="position">Departments of ECE and CS</div>
+        <div class="contact-info">
+            Email: yuguang.song [at] utoronto (dot) ca
+        </div>
+        <div class="social-links">
+            <a href="#">Google Scholar</a> /
+            <a href="#">Twitter</a>
+        </div>
+    </header>
+
+    <section>
+        <h2>Research Topics</h2>
+        <div class="research-topics">
+            <span class="topic">Generative Modeling</span>
+            <span class="topic">Robot Learning</span>
+            <span class="topic">Embodied AI</span>
+        </div>
+    </section>
+
+    <section>
+        <h2>About</h2>
+        <p>
+            I am a postdoc at Stanford with Shuran Song and Dorsa Sadigh working on Robot Learning. 
+            I earned my Ph.D. degree from MIT, under the mentorship of Antonio Torralba. 
+            I work closely with Igor Mordatch. I am starting as an Assistant Professor at the 
+            University of Toronto and Vector Institute.
+        </p>
+        <p>
+            I am actively recruiting graduate, undergraduate, postdoc, and interns to join my lab. 
+            Research topics include Generative Modeling (vision and language), Embodied AI, and Robotics.
+        </p>
+    </section>
+
+    <section>
+        <h2>Recent Talks</h2>
+        <ul class="talks-list">
+            <li>[2024/7] Seminar Talk at Stanford</li>
+            <li>[2023/12] Invited Talk at NeurIPS 2023 Workshop on Diffusion Models</li>
+            <li>[2023/8] Invited Talk at Google</li>
+            <li>[2023/8] Diffusion Models Course at SIGGRAPH</li>
+            <li>[2023/5] Invited Talk at UC Berkeley</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>News</h2>
+        <ul class="news-list">
+            <li>I have been awarded CIFAR AI Chair Award 2024.</li>
+            <li>I have been selected as one of the EECS Rising Stars 2022.</li>
+            <li>I have been selected as an Outstanding Reviewer for ICML 2022.</li>
+            <li>I have been awarded 2021 Facebook Research Fellowship. Thanks, Facebook!</li>
+            <li>I have been awarded 2019 Adobe Research Fellowship. Thanks, Adobe!</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Selected Publications</h2>
+        <div class="publication">
+            <div class="publication-title">
+                Compositional Foundation Models for Hierarchical Planning
+            </div>
+            <div class="publication-authors">
+                Anurag Ajay*, Seungwook Han*, Yilun Du*, Yuguang Song, Abhi Gupta, Tommi Jaakkola,
+                Joshua B. Tenenbaum, Leslie Kaelbling, Akash Srivastava, and Pulkit Agrawal
+            </div>
+            <div class="publication-venue">NeurIPS 2023</div>
+            <div class="publication-links">
+                <a href="#">[Project]</a>
+                <a href="#">[Paper]</a>
+                <a href="#">[Code]</a>
+            </div>
+        </div>
+
+        <div class="publication">
+            <div class="publication-title">
+                ConceptFusion: Open-set Multimodal 3D Mapping
+            </div>
+            <div class="publication-authors">
+                Krishna Murthy Jatavallabhula, Alihusein Kuwajerwala, Qiao Gu, Mohd Omama, Tao Chen,
+                Yuguang Song, Ganesh Iyer, et al.
+            </div>
+            <div class="publication-venue">RSS 2023</div>
+            <div class="publication-links">
+                <a href="#">[Project]</a>
+                <a href="#">[Paper]</a>
+                <a href="#">[Video]</a>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Contact</h2>
+        <p>
+            MIT Computer Science and Artificial Intelligence Lab<br>
+            32 Vassar Street, 32-D394<br>
+            Cambridge, MA 02139
+        </p>
+    </section>
 </body>
 </html>
