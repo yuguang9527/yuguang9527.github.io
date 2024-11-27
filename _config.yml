@@ -1,3 +1,37 @@
+# 基础设置
 theme: jekyll-theme-minimal
-title: 你的网站标题
-description: 网站的简短描述
+title: Yuguang Song
+description: Assistant Professor at University of Toronto and Vector Institute
+
+# 个人信息
+author:
+  name: Yuguang Song
+  email: yuguang.song@utoronto.ca
+  position: Incoming Assistant Professor
+  affiliation: University of Toronto and Vector Institute
+  department: Departments of ECE and CS
+
+# 研究方向
+research_topics:
+  - Generative Modeling
+  - Robot Learning
+  - Embodied AI
+
+# 社交媒体链接
+social:
+  google_scholar: # 你的Google Scholar链接
+  twitter: # 你的Twitter链接
+  github: yuguang-86 # 基于你的GitHub用户名
+
+# 主题颜色设置 (与HTML版本保持一致)
+colors:
+  primary: "#2c3e50"
+  secondary: "#3498db"
+  background: "#f8f9fa"
+  text: "#333"
+  link: "#2980b9"
+
+# 网站其他设置
+show_downloads: true
+google_analytics: # 你的GA跟踪ID
+logo: /assets/img/logo.png
