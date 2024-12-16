@@ -113,6 +113,53 @@ A comprehensive data cleaning process was applied to both the training and predi
 
 <p>High-missing-value columns were considered for imputation strategies. Low-percentage missing values could be easily handled.</p>
 
+<p>Below is the code snippet used to clean the <code>loans_to_predict.csv</code> dataset:</p>
+
+<pre><code class="language-python">
+import pandas as pd
+import numpy as np
+
+# Read the data
+test_data = pd.read_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict.csv')
+
+# Drop specified columns
+columns_to_drop = [
+    'desc',                      # High percentage of missing values
+    'mths_since_last_record',    # High percentage of missing values
+    'emp_title',                 # Too many unique values
+    'zip_code',                  # Postal code, not needed
+    'pymnt_plan',                # Only one unique value
+    'purpose',                   # Dropped based on project requirements
+]
+
+test_data = test_data.drop(columns=columns_to_drop)
+
+# Save the cleaned data
+test_data.to_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_cleaned.csv', index=False)
+
+# Display shape and columns
+print("Data cleaning completed:")
+print(f"Test dataset shape: {test_data.shape}")
+
+print("\nRemaining column names:")
+print(test_data.columns.tolist())
+
+# Display data type information
+print("\nData type summary:")
+print(test_data.dtypes.value_counts())
+
+# Display missing values after cleaning
+missing_test = test_data.isnull().sum()
+missing_percent_test = (missing_test / len(test_data)) * 100
+missing_stats = pd.DataFrame({
+    'Missing Value Count': missing_test,
+    'Missing Value Percentage': missing_percent_test
+})
+
+print("\nRemaining missing values:")
+print(missing_stats[missing_stats['Missing Value Count'] > 0].sort_values('Missing Value Count', ascending=False))
+</code></pre>
+
 <hr>
 
 <h2>Step 3: Data Standardization</h2>
@@ -142,10 +189,91 @@ After cleaning, numerical features were standardized to have zero mean and unit 
 
 <p><strong>Outcome:</strong> The standardized dataset (<code>loans_to_predict_standardized.csv</code>) is now ready for model prediction with no missing or infinite values.</p>
 
+<p>Below is the code snippet used to standardize the cleaned dataset:</p>
+
+<pre><code class="language-python">
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+# Read the cleaned data
+test_data = pd.read_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_cleaned.csv')
+
+# Separate numerical and non-numerical columns, exclude the 'X' column
+numeric_columns = test_data.select_dtypes(include=['int64', 'float64']).columns
+numeric_columns = [col for col in numeric_columns if col != 'X']  # Exclude 'X' column
+categorical_columns = test_data.select_dtypes(include=['object']).columns
+
+print("Numeric variables:")
+print(numeric_columns)
+print("\nCategorical variables:")
+print(categorical_columns.tolist())
+
+# Identify date columns
+date_columns = []
+for column in test_data.columns:
+    if column not in numeric_columns:
+        try:
+            pd.to_datetime(test_data[column].dropna().iloc[0])
+            date_columns.append(column)
+        except:
+            continue
+
+print("\nDate-type columns:")
+print(date_columns)
+
+# Check NaN counts for each numeric column
+print("\nNaN counts for each numeric column:")
+for column in numeric_columns:
+    nan_count = test_data[column].isna().sum()
+    if nan_count > 0:
+        print(f"{column}: {nan_count} ({(nan_count/len(test_data)*100):.2f}%)")
+
+# Special handling for mths_since_last_delinq - fill NaN with max value + 1
+max_delinq = test_data['mths_since_last_delinq'].max()
+test_data['mths_since_last_delinq'] = test_data['mths_since_last_delinq'].fillna(max_delinq + 1)
+
+# Handle other NaN values by dropping rows with NaN in numeric columns (except for mths_since_last_delinq which is now handled)
+test_data = test_data.dropna(subset=[col for col in numeric_columns if col != 'mths_since_last_delinq'])
+
+print(f"\nDataset size after dropping NaNs:")
+print(f"Test set: {test_data.shape}")
+
+# Standardize the numeric variables (excluding 'X')
+scaler = StandardScaler()
+test_data[numeric_columns] = scaler.fit_transform(test_data[numeric_columns])
+
+# Save the standardized data
+test_data.to_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_standardized.csv', index=False)
+
+# Display summary statistics of standardized numeric variables
+print("\nSummary statistics after standardization:")
+print(test_data[numeric_columns].describe())
+
+# Check for infinite or NaN values
+print("\nCheck for infinite and NaN values:")
+print("Number of infinite values in test set:", np.isinf(test_data[numeric_columns]).sum().sum())
+print("Number of NaN values in test set:", np.isnan(test_data[numeric_columns]).sum().sum())
+
+# Set a base date
+base_date = pd.to_datetime('2000-01-01')
+
+# Convert date columns to number of days since the base date
+for date_column in date_columns:
+    try:
+        if date_column in test_data.columns:
+            test_data[date_column] = pd.to_datetime(test_data[date_column], format='%b-%Y')
+            test_data[f'{date_column}_days'] = (test_data[date_column] - base_date).dt.days
+    except:
+        print(f"Warning: Failed to convert date format in {date_column}")
+        continue
+</code></pre>
+
+<p>After running these scripts, the resulting standardized dataset is free of NaNs and infinite values, with numeric features on a consistent scale. This prepared dataset is now ready to be fed into a predictive model.</p>
+
 <hr>
 
 <h2>Step 4: Model Training and Evaluation</h2>
-
 <p><strong>Training Steps:</strong></p>
 
 <ol>
