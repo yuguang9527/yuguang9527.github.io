@@ -3,9 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Code Snippets</title>
+<title>Loan Prediction Data Preparation</title>
 <style>
-/* Optional: Add some styling for the code block */
+/* Optional: Basic styling for readability */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+    max-width: 1000px;
+}
+h1, h2 {
+    color: #333;
+}
 pre {
     background: #f5f5f5;
     border: 1px solid #ccc;
@@ -20,12 +29,22 @@ code {
 </head>
 <body>
 
-<h1>Data Cleaning (for loans_to_predict.csv)</h1>
+<h1>Loan Prediction Data Preparation</h1>
+
+<p>This document shows the code used for cleaning and standardizing loan datasets. The first script removes unwanted columns, handles missing values, and prepares the <code>loans_to_predict.csv</code> dataset for modeling. The second script standardizes the numeric features and transforms date columns into numeric formats. Both scripts ensure that the data fed into the predictive model is consistent, clean, and ready for analysis.</p>
+
+<hr>
+
+<h2>Data Cleaning (for <code>loans_to_predict.csv</code>)</h2>
+<p>
+This code snippet reads the raw prediction dataset, removes specified columns known to be uninformative or problematic (e.g., too many missing values, unnecessary identifiers, or single-value columns), and then outputs the cleaned dataset to a new file <code>loans_to_predict_cleaned.csv</code>. It also prints out information on remaining columns, data types, and missing values after cleaning.
+</p>
+
 <pre><code class="language-python">
 import pandas as pd
 import numpy as np
 
-Read the data
+# Read the data
 test_data = pd.read_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict.csv')
 
 # Drop specified columns
@@ -66,7 +85,13 @@ print("\nRemaining missing values:")
 print(missing_stats[missing_stats['Missing Value Count'] > 0].sort_values('Missing Value Count', ascending=False))
 </code></pre>
 
-<h1>Data Standardization (for loans_to_predict_cleaned.csv)</h1>
+<hr>
+
+<h2>Data Standardization (for <code>loans_to_predict_cleaned.csv</code>)</h2>
+<p>
+This code reads the cleaned prediction dataset and prepares it for modeling. It separates numeric and categorical columns, identifies date columns, and handles missing values. The <code>mths_since_last_delinq</code> column is imputed with <code>max_delinq + 1</code>, and rows with missing values in other numeric columns are dropped. The remaining numeric features are standardized using <code>StandardScaler</code> to ensure consistency in scale across features. The script also attempts to convert date columns into the number of days since a base date, enabling the model to use time-based information more effectively.
+</p>
+
 <pre><code class="language-python">
 import pandas as pd
 import numpy as np
@@ -144,6 +169,8 @@ for date_column in date_columns:
         print(f"Warning: Failed to convert date format in {date_column}")
         continue
 </code></pre>
+
+<p>After running these scripts, the resulting standardized dataset is free of NaNs and infinite values, with numeric features on a consistent scale. This prepared dataset is now ready to be fed into a predictive model.</p>
 
 </body>
 </html>
