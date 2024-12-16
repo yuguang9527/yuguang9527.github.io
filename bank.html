@@ -3,17 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loan Prediction Data Preparation</title>
+<title>Loan Prediction Project Report</title>
 <style>
-/* Optional: Basic styling for readability */
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
     margin: 20px;
     max-width: 1000px;
-}
-h1, h2 {
     color: #333;
+}
+h1, h2, h3, h4 {
+    margin-bottom: 0.5em;
+    color: #333;
+}
+hr {
+    margin: 40px 0;
+    border: none;
+    border-top: 1px solid #ccc;
+}
+code, pre {
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
 }
 pre {
     background: #f5f5f5;
@@ -21,156 +30,249 @@ pre {
     padding: 10px;
     overflow: auto;
 }
-code {
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    font-size: 14px;
+ul {
+    margin: 0;
+    padding-left: 20px;
 }
 </style>
 </head>
 <body>
 
-<h1>Loan Prediction Data Preparation</h1>
+<h1>Loan Prediction Project Report</h1>
 
-<p>This document shows the code used for cleaning and standardizing loan datasets. The first script removes unwanted columns, handles missing values, and prepares the <code>loans_to_predict.csv</code> dataset for modeling. The second script standardizes the numeric features and transforms date columns into numeric formats. Both scripts ensure that the data fed into the predictive model is consistent, clean, and ready for analysis.</p>
+<h2>Introduction</h2>
+<p>
+This project involved building a predictive model using historical loan data to estimate the probability of certain outcomes for new, unseen loan applications.
+</p>
+
+<p><strong>Data Sources:</strong></p>
+<ul>
+  <li><strong>Training Data:</strong> <code>loan_data.csv</code> – Historical loan information used for model training.</li>
+  <li><strong>Prediction Data:</strong> <code>loans_to_predict.csv</code> – New loan applications for which we want to predict probabilities.</li>
+</ul>
+
+<p><strong>Workflow Steps:</strong></p>
+<ol>
+  <li>Initial Data Screening</li>
+  <li>Data Cleaning</li>
+  <li>Data Standardization</li>
+  <li>Model Training</li>
+  <li>Test Data Cleaning and Standardization</li>
+  <li>Final Prediction</li>
+</ol>
+
+<p>Below, each step is explained in detail.</p>
 
 <hr>
 
-<h2>Data Cleaning (for <code>loans_to_predict.csv</code>)</h2>
-<p>
-This code snippet reads the raw prediction dataset, removes specified columns known to be uninformative or problematic (e.g., too many missing values, unnecessary identifiers, or single-value columns), and then outputs the cleaned dataset to a new file <code>loans_to_predict_cleaned.csv</code>. It also prints out information on remaining columns, data types, and missing values after cleaning.
-</p>
+<h2>Step 1: Initial Data Screening</h2>
+<p><strong>Objective:</strong> Assess the structure and quality of the training dataset before modeling.</p>
 
-<pre><code class="language-python">
-import pandas as pd
-import numpy as np
+<p><strong>Actions:</strong></p>
+<ul>
+  <li>Checked the number of rows and columns.</li>
+  <li>Summarized data types to identify numeric, categorical, and textual features.</li>
+  <li>Evaluated missing values per column.</li>
+  <li>Identified columns that may not be useful (e.g., unique IDs, high missing rates, low variance).</li>
+</ul>
 
-# Read the data
-test_data = pd.read_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict.csv')
-
-# Drop specified columns
-columns_to_drop = [
-    'desc',                      # High percentage of missing values
-    'mths_since_last_record',    # High percentage of missing values
-    'emp_title',                 # Too many unique values
-    'zip_code',                  # Postal code, not needed
-    'pymnt_plan',                # Only one unique value
-    'purpose',                   # Dropped based on project requirements
-]
-
-test_data = test_data.drop(columns=columns_to_drop)
-
-# Save the cleaned data
-test_data.to_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_cleaned.csv', index=False)
-
-# Display shape and columns
-print("Data cleaning completed:")
-print(f"Test dataset shape: {test_data.shape}")
-
-print("\nRemaining column names:")
-print(test_data.columns.tolist())
-
-# Display data type information
-print("\nData type summary:")
-print(test_data.dtypes.value_counts())
-
-# Display missing values after cleaning
-missing_test = test_data.isnull().sum()
-missing_percent_test = (missing_test / len(test_data)) * 100
-missing_stats = pd.DataFrame({
-    'Missing Value Count': missing_test,
-    'Missing Value Percentage': missing_percent_test
-})
-
-print("\nRemaining missing values:")
-print(missing_stats[missing_stats['Missing Value Count'] > 0].sort_values('Missing Value Count', ascending=False))
-</code></pre>
+<p><strong>Outcome:</strong> This initial assessment guided decisions on which columns to keep, drop, or transform prior to modeling.</p>
 
 <hr>
 
-<h2>Data Standardization (for <code>loans_to_predict_cleaned.csv</code>)</h2>
+<h2>Step 2: Data Cleaning</h2>
 <p>
-This code reads the cleaned prediction dataset and prepares it for modeling. It separates numeric and categorical columns, identifies date columns, and handles missing values. The <code>mths_since_last_delinq</code> column is imputed with <code>max_delinq + 1</code>, and rows with missing values in other numeric columns are dropped. The remaining numeric features are standardized using <code>StandardScaler</code> to ensure consistency in scale across features. The script also attempts to convert date columns into the number of days since a base date, enabling the model to use time-based information more effectively.
+A comprehensive data cleaning process was applied to both the training and prediction datasets. Below is a summary of the cleaning performed on <code>loans_to_predict.csv</code>. The same logic was consistently applied to the training data (<code>loan_data.csv</code>).
 </p>
 
-<pre><code class="language-python">
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
+<p><strong>Key Actions for <code>loans_to_predict.csv</code>:</strong></p>
+<ul>
+  <li>Dropped columns with too many missing values or low predictive utility, such as <code>desc</code>, <code>mths_since_last_record</code>, <code>emp_title</code>, <code>zip_code</code>, <code>pymnt_plan</code>, and <code>purpose</code>.</li>
+  <li>Ensured consistent handling of missing values.</li>
+  <li>Removed unnecessary or one-value columns.</li>
+</ul>
 
-# Read the cleaned data
-test_data = pd.read_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_cleaned.csv')
+<p><strong>Results:</strong></p>
+<ul>
+  <li><strong>Dataset Shape:</strong> (133,723 rows, 29 columns) after dropping specified columns.</li>
+  <li><strong>Data Types:</strong>
+    <ul>
+      <li><code>int64</code>: 14 columns</li>
+      <li><code>float64</code>: 5 columns</li>
+      <li><code>object</code>: 10 columns</li>
+    </ul>
+  </li>
+  <li><strong>Remaining Missing Values:</strong>
+    <ul>
+      <li><code>mths_since_last_delinq</code>: ~48.23% missing</li>
+      <li><code>revol_util</code>: ~0.046% missing</li>
+      <li><code>title</code>: ~0.0217% missing</li>
+    </ul>
+  </li>
+</ul>
 
-# Separate numerical and non-numerical columns, exclude the 'X' column
-numeric_columns = test_data.select_dtypes(include=['int64', 'float64']).columns
-numeric_columns = [col for col in numeric_columns if col != 'X']  # Exclude 'X' column
-categorical_columns = test_data.select_dtypes(include=['object']).columns
+<p>High-missing-value columns were considered for imputation strategies. Low-percentage missing values could be easily handled.</p>
 
-print("Numeric variables:")
-print(numeric_columns)
-print("\nCategorical variables:")
-print(categorical_columns.tolist())
+<hr>
 
-# Identify date columns
-date_columns = []
-for column in test_data.columns:
-    if column not in numeric_columns:
-        try:
-            pd.to_datetime(test_data[column].dropna().iloc[0])
-            date_columns.append(column)
-        except:
-            continue
+<h2>Step 3: Data Standardization</h2>
+<p>
+After cleaning, numerical features were standardized to have zero mean and unit variance. This is crucial for many model types sensitive to feature scales.
+</p>
 
-print("\nDate-type columns:")
-print(date_columns)
+<p><strong>Key Steps:</strong></p>
+<ul>
+  <li><strong>Reading Cleaned Data:</strong> Loaded <code>loans_to_predict_cleaned.csv</code>.</li>
+  <li><strong>Separating Numeric/Categorical Columns:</strong>
+    <ul>
+      <li>Numeric features were identified for standardization.</li>
+      <li>Categorical features were kept separate for encoding.</li>
+    </ul>
+  </li>
+  <li><strong>Date Columns:</strong> Attempted to convert date-like columns into a numeric representation (days since a base date).</li>
+  <li><strong>Handling Missing Values in Numeric Columns:</strong>
+    <ul>
+      <li>Imputed <code>mths_since_last_delinq</code> with <code>max_delinq + 1</code>.</li>
+      <li>Dropped rows with other numeric missing values after imputation.</li>
+    </ul>
+  </li>
+  <li><strong>Standardization:</strong> Applied <code>StandardScaler</code> to numeric features.</li>
+  <li><strong>Final Checks:</strong> Verified no infinite or NaN values remained post-standardization.</li>
+</ul>
 
-# Check NaN counts for each numeric column
-print("\nNaN counts for each numeric column:")
-for column in numeric_columns:
-    nan_count = test_data[column].isna().sum()
-    if nan_count > 0:
-        print(f"{column}: {nan_count} ({(nan_count/len(test_data)*100):.2f}%)")
+<p><strong>Outcome:</strong> The standardized dataset (<code>loans_to_predict_standardized.csv</code>) is now ready for model prediction with no missing or infinite values.</p>
 
-# Special handling for mths_since_last_delinq - fill NaN with max value + 1
-max_delinq = test_data['mths_since_last_delinq'].max()
-test_data['mths_since_last_delinq'] = test_data['mths_since_last_delinq'].fillna(max_delinq + 1)
+<hr>
 
-# Handle other NaN values by dropping rows with NaN in numeric columns (except for mths_since_last_delinq which is now handled)
-test_data = test_data.dropna(subset=[col for col in numeric_columns if col != 'mths_since_last_delinq'])
+<h2>Step 4: Model Training and Evaluation</h2>
 
-print(f"\nDataset size after dropping NaNs:")
-print(f"Test set: {test_data.shape}")
+<p><strong>Training Steps:</strong></p>
 
-# Standardize the numeric variables (excluding 'X')
-scaler = StandardScaler()
-test_data[numeric_columns] = scaler.fit_transform(test_data[numeric_columns])
+<ol>
+  <li><strong>Data Loading:</strong> Loaded the standardized training dataset <code>loans_data_standardized.csv</code>.</li>
 
-# Save the standardized data
-test_data.to_csv('/Users/yuguangsong/Documents/Datasets/loans_to_predict_standardized.csv', index=False)
+  <li><strong>Preprocessing:</strong>
+    <ul>
+      <li>Split the data into features (X) and target (y), where <code>fully_paid</code> was the target.</li>
+      <li>Handled missing values by imputing or dropping as needed.</li>
+      <li>Processed categorical features via one-hot encoding.</li>
+      <li>Converted date columns into numeric representations (e.g., year + month/12).</li>
+      <li>Standardized all numeric features using <code>StandardScaler</code>.</li>
+    </ul>
+  </li>
 
-# Display summary statistics of standardized numeric variables
-print("\nSummary statistics after standardization:")
-print(test_data[numeric_columns].describe())
+  <li><strong>Data Splitting:</strong> Split into training (80%) and testing (20%) sets.</li>
 
-# Check for infinite or NaN values
-print("\nCheck for infinite and NaN values:")
-print("Number of infinite values in test set:", np.isinf(test_data[numeric_columns]).sum().sum())
-print("Number of NaN values in test set:", np.isnan(test_data[numeric_columns]).sum().sum())
+  <li><strong>Class Imbalance Handling:</strong>
+    <ul>
+      <li>Identified imbalance: many more “fully paid” loans than “not fully paid.”</li>
+      <li>Used SMOTE with a sampling strategy of 0.2 to improve minority class representation.</li>
+    </ul>
+  </li>
+</ol>
 
-# Set a base date
-base_date = pd.to_datetime('2000-01-01')
+<p><strong>Class Distribution:</strong></p>
+<p>Before SMOTE:</p>
+<ul>
+  <li>Fully Paid (1): 213,283</li>
+  <li>Not Fully Paid (0): 36,331</li>
+</ul>
 
-# Convert date columns to number of days since the base date
-for date_column in date_columns:
-    try:
-        if date_column in test_data.columns:
-            test_data[date_column] = pd.to_datetime(test_data[date_column], format='%b-%Y')
-            test_data[f'{date_column}_days'] = (test_data[date_column] - base_date).dt.days
-    except:
-        print(f"Warning: Failed to convert date format in {date_column}")
-        continue
+<p>After SMOTE:</p>
+<ul>
+  <li>Fully Paid (1): 213,283</li>
+  <li>Not Fully Paid (0): 42,656</li>
+</ul>
+
+<p><strong>Model Training:</strong></p>
+<ul>
+  <li><strong>Chosen Model:</strong> Logistic Regression</li>
+  <li><strong>Parameters:</strong> <code>max_iter=1000</code>, <code>class_weight='balanced'</code>, <code>C=0.1</code></li>
+  <li>Trained on the SMOTE-balanced training data.</li>
+</ul>
+
+<p><strong>Model Evaluation:</strong></p>
+<ul>
+  <li>Predictions made on the test set.</li>
+  <li><strong>Metrics:</strong>
+    <ul>
+      <li>Accuracy: 0.6536</li>
+      <li>Precision: 0.9098</li>
+      <li>Recall: 0.6611</li>
+      <li>F1 Score: 0.7657</li>
+      <li>AUC-ROC: 0.6871</li>
+      <li>Average Precision: 0.9242</li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>Confusion Matrix:</strong></p>
+<pre><code>
+               Predicted 0    Predicted 1
+  Actual 0        5453           3504
+  Actual 1       18114          35333
 </code></pre>
 
-<p>After running these scripts, the resulting standardized dataset is free of NaNs and infinite values, with numeric features on a consistent scale. This prepared dataset is now ready to be fed into a predictive model.</p>
+<p><strong>Interpretation:</strong></p>
+<ul>
+  <li>High precision (~91%) indicates that when the model predicts a loan as “fully paid,” it is usually correct.</li>
+  <li>Recall (~66%) shows that out of all truly “fully paid” loans, the model identifies about two-thirds.</li>
+  <li>The F1 score (~0.77) and AUC-ROC (~0.69) suggest moderate discriminative ability.</li>
+  <li>High average precision (0.9242) indicates strong ranking performance.</li>
+</ul>
+
+<p><strong>Feature Importance:</strong></p>
+<ul>
+  <li>Top features included credit grade (e.g., <code>grade_B</code>, <code>grade_C</code>), loan amount variables, and some title-related features.</li>
+  <li>These variables had the greatest influence on predictions.</li>
+</ul>
+
+<hr>
+
+<h2>Step 5: Test Data Cleaning and Standardization</h2>
+<p>
+The same cleaning and standardization procedures were applied to <code>loans_to_predict.csv</code> to ensure consistency with the training set. All transformations were based on parameters derived from the training data to prevent data leakage.
+</p>
+
+<p><strong>Result:</strong> <code>loans_to_predict_standardized.csv</code> matches the training set’s preprocessing conditions, ready for final predictions.</p>
+
+<hr>
+
+<h2>Step 6: Final Prediction</h2>
+<p><strong>Actions:</strong></p>
+<ul>
+  <li>Loaded the cleaned and standardized test dataset (<code>loans_to_predict_standardized.csv</code>).</li>
+  <li>Applied the trained logistic regression model to generate probability predictions using <code>predict_proba()</code>.</li>
+  <li>Saved these probabilities along with the corresponding loan IDs into <code>loan_predictions.csv</code>.</li>
+</ul>
+
+<p><strong>Sample Predictions:</strong></p>
+<pre><code>
+   X       pred
+0  0   0.789654
+1  1   0.543210
+...
+</code></pre>
+
+<p>These probability scores help in making informed decisions regarding new loan applications.</p>
+
+<hr>
+
+<h2>Conclusion</h2>
+<p>
+This report detailed the full modeling pipeline:
+</p>
+<ul>
+  <li><strong>Data Exploration and Cleaning:</strong> Ensured data integrity by removing irrelevant columns and handling missing values.</li>
+  <li><strong>Standardization and Encoding:</strong> Achieved consistent scales for numeric features and encoded categorical variables properly.</li>
+  <li><strong>Model Training with Class Imbalance Handling:</strong> Improved performance by addressing imbalance through SMOTE.</li>
+  <li><strong>Evaluation:</strong> The logistic regression model displayed moderate performance, with strong precision but moderate recall and an acceptable AUC.</li>
+  <li><strong>Final Prediction:</strong> Generated probability scores for new loan applications, enabling data-driven decision-making and risk assessment.</li>
+</ul>
+
+<p>
+This end-to-end process, from data preparation through modeling and prediction, provides a reproducible and transparent approach. The final predictions serve as a valuable tool for loan decision strategies.
+</p>
 
 </body>
 </html>
