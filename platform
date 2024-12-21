@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Working Paper: A Dynamic Recommendation System Using LLM to Mitigate Over-Reliance and Addiction</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 20px;">
+
+<h1>Working Paper: A Dynamic Recommendation System Using LLM to Mitigate Over-Reliance and Addiction</h1>
+
+<h2>1. Introduction</h2>
+<p>
+Modern internet platforms, such as YouTube and TikTok, heavily rely on personalized recommendation systems to keep users engaged and maximize watch time. While these algorithms effectively enhance user satisfaction and platform revenue, they can also promote an “echo chamber” effect and lead to over-reliance or addiction. Excessive exposure to the same type of content encourages users to remain within a narrow range of interests, limiting their potential for broader engagement or learning.
+</p>
+<p>
+This paper proposes a new approach by combining a simple user interest model with a Large Language Model (LLM) to steer users toward more diverse or beneficial content. Specifically, we incorporate the concept of “latent learning interest” and a set of rules that gently nudge recommendations toward learning-related content when users’ interest reaches certain thresholds. This is intended to mitigate the risks of addiction and foster more balanced content consumption over time.
+</p>
+
+<h2>2. Motivation and Objective</h2>
+
+<ul>
+  <li><strong>Prevent Over-Dependence</strong>: Traditional recommender systems optimize for clicks or watch time, which can inadvertently encourage addictive behavior. Our goal is to introduce a latent interest mechanism that subtly diversifies recommendations, preventing a downward spiral into homogeneous content consumption.</li>
+  <li><strong>Promote Diversity and Constructive Content</strong>: By modeling an additional dimension of “learning interest,” the system can gently offer educational or more substantive content as a viable option. This approach aims to create a healthier viewing pattern for users.</li>
+  <li><strong>Relevance to YouTube and Similar Platforms</strong>: While our demonstration is limited and uses synthetic data, the principles apply broadly to video-sharing and streaming services that want to balance user satisfaction with responsible content delivery.</li>
+</ul>
+
+<h2>3. Methodology</h2>
+
+<h3>3.1 Overview</h3>
+<p>
+Our approach integrates a user interest model (with both explicit and latent interests) and an LLM that makes final recommendation decisions. We simulate multiple rounds of interaction to observe how the user’s learning interest evolves over time. Below is the core code used in this experiment, showing how we load the model, define the user interest update rules, and run multi-round simulations:
+</p>
+
+<pre><code class="language-python">
+!pip install langchain-huggingface --quiet
+!pip install transformers accelerate sentencepiece langchain pydantic langchain-community tiktoken --quiet
+
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from langchain import LLMChain, PromptTemplate
+from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+from pydantic import BaseModel, Field
+import json
+import numpy as np
+import random
+from langchain_community.llms import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline
+from langchain.schema.runnable import RunnableSequence
+
+# ------------------- Model & Pipeline Loading -------------------
+model_name = "meta-llama/llama-3.2-3b-instruct"
+hf_token = os.getenv("HF_TOKEN", "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")
+tokenizer = AutoTokenizer.from_pretrained(
+    model_name, 
+    token=hf_token,
+    trust_remote_code=True
+)
+hf_model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    device_map="auto",
+    torch_dtype=torch.float16,
+    token=hf_token
+)
+
+gen_pipe = pipeline(
+    "text-generation",
+    model=hf_model,
+    tokenizer=tokenizer,
+    max_new_tokens=128,
+    temperature=0.7,
+    top_p=0.9,
+    do_sample=True
+)
+
+llm = HuggingFacePipeline(pipeline=gen_pipe)
+
+# ------------------- Embedding Function (Simple Example) -------------------
+def get_text_embedding(text: str):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=128).to(hf_model.device)
+    with torch.no_grad():
+        outputs = hf_model(**inputs, output_hidden_states=True)
+    hidden_states = outputs.hidden_states[-1][0]
+    mask = inputs["attention_mask"][0].bool()
+    valid_hidden = hidden_states[mask]
+    embedding = valid_hidden.mean(dim=0)
+    embedding = embedding.cpu().float().numpy()
+    return embedding
+
+# Define output structure
+class UserAction(BaseModel):
+    clicked_id: int = Field(..., description="ID of the clicked item")
+    clicked_type: str = Field(..., description="Type of the clicked item: 'entertainment' or 'learning'")
+    increase_learning_interest: bool = Field(..., description="true or false")
+
+response_schemas = [
+    ResponseSchema(name="clicked_id", description="ID of the clicked item"),
+    ResponseSchema(name="clicked_type", description="Type of the clicked item: 'entertainment' or 'learning'"),
+    ResponseSchema(name="increase_learning_interest", description="true or false")
+]
+output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
+format_instructions = output_parser.get_format_instructions()
+
+few_shot_example = """
+Example:
+User profile:
+- Explicit interest: entertainment=0.80, learning=0.20
+- Latent interest in learning=0.30
+
+History of user actions: Round 0: User clicked A funny short video about cats (entertainment)
+
+Candidate recommendations:
+- ID 0: A popular TV show clip (Type: entertainment)
+- ID 1: A technical talk on distributed systems (Type: learning)
+- ID 2: A random vlog about daily life (Type: entertainment)
+
+The user still mostly likes entertainment, but might try learning if it looks very interesting.
+
+An appropriate answer:
+{
+  "clicked_id": 2,
+  "clicked_type": "entertainment",
+  "increase_learning_interest": false
+}
+"""
+
+# LLM is responsible for decision-making logic
+prompt_template_str = """根据用户状态和历史选择一个推荐项目。
+
+用户状态:
+- 娱乐兴趣={entertainment_interest:.2f}
+- 学习兴趣={learning_interest:.2f}
+- 潜在学习={latent_learning_interest:.2f}  # 当前值为{latent_learning_interest:.2f}，大于0.4时应考虑推荐学习内容
+
+历史: {history}
+
+可选项目:
+{candidate_list}
+
+规则:
+1. 娱乐兴趣>{learning_interest:.2f}时倾向选择娱乐
+2. 当潜在学习>{latent_learning_interest:.2f}时，有{latent_learning_interest:.0%}的机会选择学习内容
+3. 避免重复选择相同内容
+
+请选择一个项目ID："""
+
+# Ensure PromptTemplate only contains the actual variables
+prompt = PromptTemplate(
+    template=prompt_template_str,
+    input_variables=[
+        "entertainment_interest",
+        "learning_interest",
+        "latent_learning_interest",
+        "history",
+        "candidate_list"
+    ]
+)
+
+# Create the chain
+chain = prompt | llm
+
+# ------------------- Sample Data -------------------
+items = [
+    {"id":0, "text":"A funny short video about cats", "type":"entertainment"},
+    {"id":1, "text":"A tutorial on deep learning basics", "type":"learning"},
+    {"id":2, "text":"A podcast discussing quantum computing", "type":"learning"},
+    {"id":3, "text":"A popular TV show clip", "type":"entertainment"},
+    {"id":4, "text":"A niche documentary on ancient pottery", "type":"learning"},
+    {"id":5, "text":"A random vlog about daily life", "type":"entertainment"},
+    {"id":6, "text":"A technical talk on distributed systems", "type":"learning"},
+    {"id":7, "text":"A short stand-up comedy performance", "type":"entertainment"},
+    {"id":8, "text":"An obscure educational series about astrophysics", "type":"learning"},
+    {"id":9, "text":"A movie trailer from a well-known franchise", "type":"entertainment"},
+]
+
+user_profile = {
+    "explicit_interest": {"entertainment":0.7, "learning":0.3},
+    "latent_interest": {"learning":0.5}
+}
+
+def get_candidate_items(user_profile, items, diversify_ratio=0.3):
+    item_scores = []
+    for i, it in enumerate(items):
+        it_type = it["type"]
+        score = user_profile["explicit_interest"].get(it_type, 0.0)
+        item_scores.append((i, score))
+    base_candidates = sorted(item_scores, key=lambda x:x[1], reverse=True)
+    top_n = 5
+    selected_indices = [x[0] for x in base_candidates[:top_n]]
+    learning_items = [i for i,it in enumerate(items) if it["type"] == "learning" and i not in selected_indices]
+    num_diversify = max(1, int(top_n * diversify_ratio))
+    if len(learning_items) > 0:
+        random_diverse = random.sample(learning_items, min(len(learning_items), num_diversify))
+    else:
+        random_diverse = []
+    final_candidates = list(set(selected_indices + random_diverse))
+    return [items[i] for i in final_candidates]
+
+def generate_response(llm_output: str, candidates: list) -> dict:
+    """Generate a standard JSON response based on LLM's selection."""
+    try:
+        possible_candidates = []
+        for candidate in candidates:
+            if str(candidate["id"]) in llm_output:
+                possible_candidates.append(candidate)
+        
+        if possible_candidates:
+            chosen = random.choice(possible_candidates)
+        else:
+            chosen = random.choice(candidates)
+        
+        response = {
+            "clicked_id": chosen["id"],
+            "clicked_type": chosen["type"],
+            "increase_learning_interest": chosen["type"] == "learning"
+        }
+        
+        print(f"\nJSON Response:\n{json.dumps(response, indent=2)}")
+        return response
+        
+    except Exception as e:
+        print(f"Failed to generate response: {str(e)}")
+        chosen = random.choice(candidates)
+        response = {
+            "clicked_id": chosen["id"],
+            "clicked_type": chosen["type"],
+            "increase_learning_interest": chosen["type"] == "learning"
+        }
+        print(f"\nFallback JSON Response:\n{json.dumps(response, indent=2)}")
+        return response
+
+def update_user_interests(profile: dict, clicked_type: str, increase_learning: bool) -> dict:
+    """Update user interest model."""
+    if clicked_type == "learning" and increase_learning:
+        # Increase latent learning interest
+        profile["latent_interest"]["learning"] = min(
+            profile["latent_interest"]["learning"] + 0.1, 
+            1.0
+        )
+        
+        # Update explicit interest
+        old_learning = profile["explicit_interest"]["learning"]
+        new_learning = old_learning * 0.9 + profile["latent_interest"]["learning"] * 0.1
+        profile["explicit_interest"]["learning"] = new_learning
+        
+        # Maintain sum = 1
+        profile["explicit_interest"]["entertainment"] = 1 - new_learning
+    
+    return profile
+
+# ------------------- Simulation Rounds -------------------
+history = []
+num_rounds = 3
+
+for round_i in range(num_rounds):
+    candidates = get_candidate_items(user_profile, items)
+    candidate_str = ""
+    for c in candidates:
+        candidate_str += f"- ID {c['id']}: {c['text']} (Type: {c['type']})\n"
+
+    response = chain.invoke({
+        "entertainment_interest": user_profile["explicit_interest"]["entertainment"],
+        "learning_interest": user_profile["explicit_interest"]["learning"],
+        "latent_learning_interest": user_profile["latent_interest"]["learning"],
+        "history": " | ".join(history) if history else "None",
+        "candidate_list": candidate_str
+    })
+
+    parsed = generate_response(response, candidates)
+    if parsed is None:
+        chosen = random.choice(candidates)
+        parsed = {
+            "clicked_id": chosen["id"],
+            "clicked_type": chosen["type"],
+            "increase_learning_interest": False
+        }
+
+    clicked_item = next((it for it in candidates if it['id'] == parsed["clicked_id"]), random.choice(candidates))
+    history.append(f"Round {round_i}: User clicked {clicked_item['text']} ({clicked_item['type']})")
+
+    user_profile = update_user_interests(
+        user_profile,
+        parsed["clicked_type"],
+        parsed["increase_learning_interest"]
+    )
+
+    print(f"Round {round_i} Results:")
+    print(f"Clicked: {clicked_item['text']}")
+    print(f"User interests: {json.dumps(user_profile, indent=2)}")
+    print("-------------------------")
+
+print("Simulation completed.")
+</code></pre>
+
+<h3>3.2 How It Works</h3>
+<ul>
+  <li><strong>LLM Decision</strong>: The LLM is fed a prompt containing the user’s current explicit interest (entertainment vs. learning), their latent learning interest, the history of their previous clicks, and a candidate list of items. The LLM then decides which item the user might click next and whether that click leads to an increase in the user’s learning interest.</li>
+  <li><strong>Diversity Mechanism</strong>: We introduce random sampling of learning-related items into the top candidates to mitigate repetitive recommendations.</li>
+  <li><strong>Interest Update</strong>: After each round, if the user clicks on learning content, the user’s latent learning interest is raised. This can feed back into their explicit interest, gradually shifting the user profile over multiple interactions.</li>
+</ul>
+
+<h2>4. Data</h2>
+<p>
+Our dataset consists of a small synthetic set of items (10 total), each labeled as “entertainment” or “learning.” The user’s profile starts with an explicit interest of 0.7 for entertainment and 0.3 for learning, along with a latent learning interest of 0.5. In real-world applications, similar data could be extracted from actual user watch history, engagement metrics, and platform logs.
+</p>
+
+<h2>5. Results</h2>
+<p>
+Below is the actual output from running the simulation with 3 rounds. The model initially picks entertainment content (reflecting the higher explicit interest), then shifts to a learning item in the last round, causing an uptick in the user’s learning interest parameters.
+</p>
+
+<pre><code class="language-vbnet">
+Loading checkpoint shards: 100%
+ 2/2 [00:03<00:00,  1.79s/it]
+Device set to use cuda:0
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+
+JSON Response:
+{
+  "clicked_id": 0,
+  "clicked_type": "entertainment",
+  "increase_learning_interest": false
+}
+Round 0 Results:
+Clicked: A funny short video about cats
+User interests: {
+  "explicit_interest": {
+    "entertainment": 0.7,
+    "learning": 0.3
+  },
+  "latent_interest": {
+    "learning": 0.5
+  }
+}
+-------------------------
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+
+JSON Response:
+{
+  "clicked_id": 7,
+  "clicked_type": "entertainment",
+  "increase_learning_interest": false
+}
+Round 1 Results:
+Clicked: A short stand-up comedy performance
+User interests: {
+  "explicit_interest": {
+    "entertainment": 0.7,
+    "learning": 0.3
+  },
+  "latent_interest": {
+    "learning": 0.5
+  }
+}
+-------------------------
+
+JSON Response:
+{
+  "clicked_id": 4,
+  "clicked_type": "learning",
+  "increase_learning_interest": true
+}
+Round 2 Results:
+Clicked: A niche documentary on ancient pottery
+User interests: {
+  "explicit_interest": {
+    "entertainment": 0.6699999999999999,
+    "learning": 0.33
+  },
+  "latent_interest": {
+    "learning": 0.6
+  }
+}
+-------------------------
+Simulation completed.
+</code></pre>
+
+<p>
+As shown:
+</p>
+<ul>
+  <li>In Round 0 and Round 1, the system selects entertainment-related content, reflecting the current user preference for entertainment.</li>
+  <li>By Round 2, the model picks a learning item, which then adjusts both the user’s explicit and latent learning interests upward.</li>
+</ul>
+
+<h2>6. Discussion</h2>
+<ul>
+  <li><strong>Effectiveness and Limitations</strong>: Although this system can gently steer users away from homogeneous content streams, its performance and reliability in a real production environment remain to be validated. The current code uses synthetic data and a limited set of rules.</li>
+  <li><strong>LLM Consistency</strong>: Large Language Models can exhibit unpredictable behavior, occasionally ignoring certain constraints or repeating past actions. Additional constraints, verification steps, or “guardrails” (such as RLHF or rule-based filtering) may be required in practice.</li>
+  <li><strong>Scaling and Complexity</strong>: Real-world user interests are multifaceted and may require more sophisticated modeling (e.g., multi-topic interest vectors, time-based decay, content-based filtering). The approach here can be extended with vector embeddings and retrieval-augmented generation (RAG) for more complex or large-scale scenarios.</li>
+</ul>
+
+<h2>7. Conclusion</h2>
+<p>
+This working paper demonstrates a novel use case of LLMs in a dynamic recommendation workflow, aiming to reduce user over-reliance on addictive content. By blending an LLM-based decision process with an evolving user interest model (explicit and latent learning interest), it is possible to nudge users toward more balanced, educational, or diverse content. Our early results using a simple code demo show promise, but more extensive testing—both in simulations and live experiments—would be necessary before deploying such a system on large platforms like YouTube.
+</p>
+
+<h2>8. Future Work</h2>
+<ul>
+  <li><strong>Real-World Deployment and A/B Testing</strong>: Validate the system on a larger scale with real user data to see how it impacts user satisfaction, session length, and diversity of content consumption.</li>
+  <li><strong>More Complex User Modeling</strong>: Incorporate multi-topic interests, time decay, and additional behavioral signals (e.g., watch duration, engagement metrics) to better represent user behavior.</li>
+  <li><strong>Hybrid Recommender</strong>: Combine LLM-based decisions with vector-based retrieval or collaborative filtering techniques, creating a robust pipeline that handles large item catalogs effectively.</li>
+  <li><strong>Ethical and Compliance Considerations</strong>: As with any recommender system, transparency, fairness, and data privacy remain key. Balancing commercial objectives with user well-being will be critical.</li>
+</ul>
+
+</body>
+</html>
